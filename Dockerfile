@@ -5,9 +5,8 @@ LABEL maintainer="Couchbase"
 WORKDIR /app
 
 RUN mkdir -p /usr/share/man/man1
-RUN apt-get update && apt-get install -y \
-    maven \
-    jq curl
+RUN apt-get update && \
+    apt-get install -y maven jq curl || true
 
 ADD . /app
 
