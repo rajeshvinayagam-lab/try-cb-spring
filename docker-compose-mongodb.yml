@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    environment:
+      - SPRING_PROFILES_ACTIVE=mongodb
+      - MONGODB_HOST=mongodb:27017
+      - MONGODB_DATABASE=travel-sample
+      - MONGODB_USERNAME=admin
+      - MONGODB_PASSWORD=password
+    depends_on:
+      - mongodb
+    ports:
+      - 8080:8080
+    container_name: try-cb-api-mongodb
+  
+  frontend:
+    build: "https://github.com/couchbaselabs/try-cb-frontend-v2.git#7.0"
+    depends_on:
+      - backend
+    ports:
+      - 8081:8081
+    container_name: try-cb-fe-mongodb
+    entrypoint: ["wait-for-it", "backend:8080", "--timeout=400", "--strict", "--", "npm", "run", "serve"]
+
+  mongodb:
+    image: mongo:5.0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=travel-sample
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb-data:/data/db
+      - ./mongodb-init:/docker-entrypoint-initdb.d
+    container_name: mongodb
+
+volumes:
+  mongodb-data:

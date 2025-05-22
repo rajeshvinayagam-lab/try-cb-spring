@@ -33,6 +33,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.stereotype.Service;
 
@@ -52,7 +53,8 @@ import trycb.config.HotelRepository;
 import trycb.model.Result;
 
 @Service
-public class Hotel {
+@Profile("couchbase")
+public class Hotel implements HotelService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Hotel.class);
 
@@ -71,6 +73,7 @@ public class Hotel {
   /**
    * Search for a hotel in a particular location.
    */
+  @Override
   public Result<List<Map<String, Object>>> findHotels(final String location, final String description) {
     ConjunctionQuery fts = SearchQuery.conjuncts(SearchQuery.term("hotel").field("type"));
 
@@ -96,6 +99,7 @@ public class Hotel {
   /**
    * Search for an hotel.
    */
+  @Override
   public Result<List<Map<String, Object>>> findHotels(final String description) {
     return findHotels("*", description);
   }
@@ -103,6 +107,7 @@ public class Hotel {
   /**
    * Find all hotels.
    */
+  @Override
   public Result<List<Map<String, Object>>> findAllHotels() {
     return findHotels("*", "*");
   }

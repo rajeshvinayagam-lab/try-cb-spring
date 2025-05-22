@@ -21,18 +21,34 @@
  */
 package trycb;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.couchbase.CouchbaseAutoConfiguration;
+import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.ConfigurableEnvironment;
 
 @SpringBootApplication
-@EnableAutoConfiguration(exclude = {CouchbaseAutoConfiguration.class})
+@EnableAutoConfiguration(exclude = {CouchbaseAutoConfiguration.class, MongoAutoConfiguration.class})
 public class Application {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
 
   public static void main(String[] args) {
     //System.setProperty("spring.devtools.restart.enabled", "false");
-    SpringApplication.run(Application.class, args);
+    ConfigurableApplicationContext context = SpringApplication.run(Application.class, args);
+    ConfigurableEnvironment env = context.getEnvironment();
+    
+    // Log active profiles
+    String[] activeProfiles = env.getActiveProfiles();
+    if (activeProfiles.length > 0) {
+      LOGGER.info("Active profiles: {}", String.join(", ", activeProfiles));
+    } else {
+      LOGGER.info("No active profiles set, using default profile");
+    }
   }
 
 }

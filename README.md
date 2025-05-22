@@ -129,6 +129,30 @@ As the provided `docker-compose.yml` sets up dependencies between the services,
 to make startup as smooth and automatic as possible, we also provide an
 alternative `mix-and-match.yml`. We'll look at a few useful scenarios here.
 
+### MongoDB Support
+
+This application now supports MongoDB as an alternative to Couchbase. To run the application with MongoDB:
+
+```
+docker-compose -f docker-compose-mongodb.yml up
+```
+
+This will:
+1. Start a MongoDB container
+2. Create the necessary collections and indexes
+3. Start the backend application with the MongoDB profile
+4. Start the frontend application
+
+You can also run the application manually with MongoDB:
+
+```
+# Start MongoDB
+docker-compose -f docker-compose-mongodb.yml up mongodb
+
+# Run the application with MongoDB profile
+mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=mongodb --mongodb.host=localhost:27017 --mongodb.database=travel-sample --mongodb.username=admin --mongodb.password=password"
+```
+
 ### Bring your own database
 
 If you wish to run this application against your own configuration of Couchbase
@@ -156,7 +180,7 @@ The Docker image will run the same checks as usual, and also create the
 ### Running the Java API application manually
 
 You may want to run the Java application yourself, to make rapid changes to it,
-and try out the features of the Couchbase API, without having to re-build the Docker
+and try out the features of the API, without having to re-build the Docker
 image. You may still use Docker to run the Database and Frontend components if desired.
 
 Please ensure that you have the following before proceeding.
