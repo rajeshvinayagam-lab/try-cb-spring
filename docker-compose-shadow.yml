@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    environment:
+      - SPRING_PROFILES_ACTIVE=shadow
+      - FEATURE_DATABASE_READ=couchbase
+      - FEATURE_DATABASE_WRITE_COUCHBASE=true
+      - FEATURE_DATABASE_WRITE_MONGODB=true
+      - FEATURE_DATABASE_VALIDATE=true
+      - FEATURE_SHADOW_PERCENTAGE=0
+    depends_on:
+      - db
+      - mongodb
+    ports:
+      - 8080:8080
+    container_name: try-cb-api-shadow
+  
+  frontend:
+    build: "https://github.com/couchbaselabs/try-cb-frontend-v2.git#7.0"
+    depends_on:
+      - backend
+    ports:
+      - 8081:8081
+    container_name: try-cb-fe-shadow
+    entrypoint: ["wait-for-it", "backend:8080", "--timeout=400", "--strict", "--", "npm", "run", "serve"]
+
+  db:
+    image: couchbase/server-sandbox:7.0.0
+    ports:
+      - "8091-8095:8091-8095"
+      - "11210:11210"
+    expose: # expose ports 8091 & 8094 to other containers (mainly for backend)
+      - "8091"
+      - "8094"
+    container_name: couchbase-sandbox-shadow
+
+  mongodb:
+    image: mongo:5.0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=travel-sample
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb-data-shadow:/data/db
+      - ./mongodb-init:/docker-entrypoint-initdb.d
+    container_name: mongodb-shadow
+
+volumes:
+  mongodb-data-shadow:

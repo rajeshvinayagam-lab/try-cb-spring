@@ -9,7 +9,7 @@ This document summarizes the implementation of MongoDB support in the try-cb-spr
 ### Architecture Changes
 
 1. **Profile-Based Configuration**
-   - Added Spring profiles: `couchbase` (default) and `mongodb`
+   - Added Spring profiles: `couchbase` (default), `mongodb`, and `shadow`
    - Application can run with either database by setting the active profile
    - All database-specific code is isolated using Spring's `@Profile` annotation
 
@@ -51,6 +51,15 @@ This document summarizes the implementation of MongoDB support in the try-cb-spr
      - `MongoBookingService`
    - Maintained identical functionality while using MongoDB-specific approaches
 
+6. **Feature Flags and Shadow Mode**
+   - Implemented `FeatureFlags` configuration class to control database behavior
+   - Created shadow service implementations that can read from one database and write to both:
+     - `ShadowHotelService`
+     - `ShadowFlightPathService`
+     - `ShadowBookingService`
+   - Added data consistency validation between databases
+   - Implemented percentage-based traffic routing for gradual migration
+
 ### Special Features Implementation
 
 1. **Full Text Search (FTS)**
@@ -86,6 +95,7 @@ This document summarizes the implementation of MongoDB support in the try-cb-spr
 
 3. **Docker Support**
    - Created `docker-compose-mongodb.yml` for MongoDB deployment
+   - Created `docker-compose-shadow.yml` for dual database support
    - Added MongoDB initialization scripts in `mongodb-init` directory
    - Updated documentation with MongoDB Docker instructions
 
@@ -96,6 +106,9 @@ This document summarizes the implementation of MongoDB support in the try-cb-spr
 ```bash
 # Run the application with MongoDB
 docker-compose -f docker-compose-mongodb.yml up
+
+# Run in shadow mode (dual database support)
+docker-compose -f docker-compose-shadow.yml up
 ```
 
 ### Manual Deployment
@@ -106,7 +119,64 @@ docker-compose -f docker-compose-mongodb.yml up mongodb
 
 # Run the application with MongoDB profile
 mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=mongodb --mongodb.host=localhost:27017 --mongodb.database=travel-sample --mongodb.username=admin --mongodb.password=password"
+
+# Run in shadow mode
+mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=shadow --feature.database.read=couchbase --feature.database.write.couchbase=true --feature.database.write.mongodb=true"
 ```
+
+## Feature Flags
+
+The application supports the following feature flags to control database behavior:
+
+| Flag                          | Description                                           | Values                    |
+|-------------------------------|-------------------------------------------------------|---------------------------|
+| feature.database.read         | Which database to read from                           | couchbase, mongodb, auto  |
+| feature.database.write.couchbase | Whether to write to Couchbase                     | true, false, auto         |
+| feature.database.write.mongodb | Whether to write to MongoDB                         | true, false, auto         |
+| feature.database.validate     | Whether to validate data consistency                  | true, false               |
+| feature.migration.enabled     | Whether data migration is enabled                     | true, false               |
+| feature.shadow.percentage     | Percentage of traffic to route to MongoDB reads       | 0-100                     |
+
+### Phased Migration Strategy
+
+1. **Shadow Writing Phase**
+   ```
+   feature.database.read=couchbase
+   feature.database.write.couchbase=true
+   feature.database.write.mongodb=true
+   feature.database.validate=true
+   ```
+   - Read from Couchbase (production)
+   - Write to both databases
+   - Validate data consistency
+
+2. **Gradual Traffic Shift**
+   ```
+   feature.database.read=auto
+   feature.database.write.couchbase=true
+   feature.database.write.mongodb=true
+   feature.shadow.percentage=10
+   ```
+   - Route 10% of reads to MongoDB
+   - Continue writing to both databases
+   - Gradually increase percentage over time
+
+3. **MongoDB Primary**
+   ```
+   feature.database.read=mongodb
+   feature.database.write.couchbase=true
+   feature.database.write.mongodb=true
+   ```
+   - Read from MongoDB primarily
+   - Continue writing to Couchbase for safety
+
+4. **MongoDB Only**
+   ```
+   feature.database.read=mongodb
+   feature.database.write.couchbase=false
+   feature.database.write.mongodb=true
+   ```
+   - MongoDB becomes the only database
 
 ## Benefits of the Migration
 
@@ -125,7 +195,12 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=mongod
    - Reduced coupling between business logic and data access
    - More maintainable and testable codebase
 
-4. **Future Expansion**
+4. **Safe Migration Path**
+   - Shadow mode allows for zero-downtime migration
+   - Consistency validation ensures data integrity
+   - Gradual traffic shifting minimizes risk
+
+5. **Future Expansion**
    - Pattern established for adding additional database backends
    - Could extend to support other databases (PostgreSQL, etc.)
 
@@ -142,3 +217,8 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=mongod
 3. **Deployment Optimizations**
    - Tune MongoDB connection pooling and performance settings
    - Add database health checks and monitoring
+
+4. **Shadow Mode Enhancements**
+   - Add metrics collection for read/write performance comparison
+   - Implement automatic rollback mechanism for failed writes
+   - Add transaction support for cross-database consistency

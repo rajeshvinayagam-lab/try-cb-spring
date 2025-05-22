@@ -153,6 +153,63 @@ docker-compose -f docker-compose-mongodb.yml up mongodb
 mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=mongodb --mongodb.host=localhost:27017 --mongodb.database=travel-sample --mongodb.username=admin --mongodb.password=password"
 ```
 
+### Shadow Mode (Dual Database Support)
+
+The application also supports "shadow mode", where it can read from one database and write to both. This is useful for:
+- Migrating from Couchbase to MongoDB
+- Testing MongoDB functionality with production Couchbase data
+- Validating data consistency between databases
+
+To run the application in shadow mode:
+
+```
+docker-compose -f docker-compose-shadow.yml up
+```
+
+#### Feature Flags
+
+Shadow mode is controlled by feature flags that can be set in application.properties or as environment variables:
+
+| Flag                          | Description                                           | Values                    |
+|-------------------------------|-------------------------------------------------------|---------------------------|
+| feature.database.read         | Which database to read from                           | couchbase, mongodb, auto  |
+| feature.database.write.couchbase | Whether to write to Couchbase                     | true, false, auto         |
+| feature.database.write.mongodb | Whether to write to MongoDB                         | true, false, auto         |
+| feature.database.validate     | Whether to validate data consistency                  | true, false               |
+| feature.migration.enabled     | Whether data migration is enabled                     | true, false               |
+| feature.shadow.percentage     | Percentage of traffic to route to MongoDB reads       | 0-100                     |
+
+Example configuration for gradual migration:
+
+```
+# Read from Couchbase but write to both databases
+feature.database.read=couchbase
+feature.database.write.couchbase=true
+feature.database.write.mongodb=true
+feature.database.validate=true
+
+# Gradually increase MongoDB traffic
+feature.shadow.percentage=10
+```
+
+Over time, you can increase the shadow percentage and eventually switch to reading from MongoDB entirely:
+
+```
+# Read from MongoDB but keep writing to both databases for safety
+feature.database.read=mongodb
+feature.database.write.couchbase=true
+feature.database.write.mongodb=true
+```
+
+Finally, when the migration is complete:
+
+```
+# MongoDB only
+feature.database.read=mongodb
+feature.database.write.couchbase=false
+feature.database.write.mongodb=true
+```
+
 ### Bring your own database
 
 If you wish to run this application against your own configuration of Couchbase
