@@ -27,6 +27,16 @@ but you can also run it in a Mix-and-Match style, which we'll decribe below.
 
 You will need [Docker](https://docs.docker.com/get-docker/) installed on your machine in order to run this application as we have defined a [_Dockerfile_](Dockerfile) and a [_docker-compose.yml_](docker-compose.yml) to run Couchbase Server 7.0.0 beta, the front-end [Vue app](https://github.com/couchbaselabs/try-cb-frontend-v2.git) and the Java REST API.
 
+To launch the full application with MongoDB database:
+
+    docker-compose --file docker-compose-mongodb.yml up --build
+
+- This will setup Couchbase database with the `travel-sample` bucket.
+- This will setup MongoDB database with the `travel-sample` collection.
+- It will create indexes on the `travel-sample` bucket/collection in both databases.
+- It will also migrate `travel-sample` from Couchbase to MongoDB.
+- It will also start the Java backend application and the Vue frontend app.
+
 To launch the full application, simply run this command from a terminal:
 
     docker-compose up
