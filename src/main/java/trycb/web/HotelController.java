@@ -12,17 +12,18 @@ import org.springframework.web.bind.annotation.RestController;
 import trycb.model.Error;
 import trycb.model.IValue;
 import trycb.service.Hotel;
+import trycb.service.HotelService;
 
 @RestController
 @RequestMapping("/api/hotels")
 public class HotelController {
 
-  private Hotel hotelService;
+  private HotelService hotelService;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HotelController.class);
   private static final String LOG_FAILURE_MESSAGE = "Failed with exception";
 
-  public HotelController(Hotel hotelService) {
+  public HotelController(HotelService hotelService) {
     this.hotelService = hotelService;
   }
 

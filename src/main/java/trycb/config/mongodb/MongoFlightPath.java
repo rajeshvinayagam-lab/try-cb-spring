@@ -22,6 +22,9 @@
 
 package trycb.config.mongodb;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
@@ -30,14 +33,14 @@ import org.springframework.data.mongodb.core.mapping.Document;
 /**
  * MongoDB representation of a FlightPath document
  */
-@Document(collection = "flightpath")
+@Document(collection = "route")
 @CompoundIndexes({
     @CompoundIndex(name = "route_idx", def = "{'sourceairport': 1, 'destinationairport': 1}")
 })
 public class MongoFlightPath {
     @Id
     private String id;
-    
+
     private String name; // airline name
     private String airlineid;
     private String flight;
@@ -46,77 +49,90 @@ public class MongoFlightPath {
     private String sourceairport;
     private String destinationairport;
     private String equipment;
-    
+
     // Getters and setters
     public String getId() {
         return id;
     }
-    
+
     public void setId(String id) {
         this.id = id;
     }
-    
+
     public String getName() {
         return name;
     }
-    
+
     public void setName(String name) {
         this.name = name;
     }
-    
+
     public String getAirlineid() {
         return airlineid;
     }
-    
+
     public void setAirlineid(String airlineid) {
         this.airlineid = airlineid;
     }
-    
+
     public String getFlight() {
         return flight;
     }
-    
+
     public void setFlight(String flight) {
         this.flight = flight;
     }
-    
+
     public int getDay() {
         return day;
     }
-    
+
     public void setDay(int day) {
         this.day = day;
     }
-    
+
     public String getUtc() {
         return utc;
     }
-    
+
     public void setUtc(String utc) {
         this.utc = utc;
     }
-    
+
     public String getSourceairport() {
         return sourceairport;
     }
-    
+
     public void setSourceairport(String sourceairport) {
         this.sourceairport = sourceairport;
     }
-    
+
     public String getDestinationairport() {
         return destinationairport;
     }
-    
+
     public void setDestinationairport(String destinationairport) {
         this.destinationairport = destinationairport;
     }
-    
+
     public String getEquipment() {
         return equipment;
     }
-    
+
     public void setEquipment(String equipment) {
         this.equipment = equipment;
+    }
+
+    public Map<String,Object> toMap(){
+        Map<String,Object> map= new HashMap<>(6);
+        map.put("name",name);
+        map.put("flight", flight);
+        map.put("airlineid", airlineid);
+        map.put("utc", utc);
+        map.put("day", day);
+        map.put("sourceairport", sourceairport);
+        map.put("destinationairport", destinationairport);
+        map.put("equipment", equipment);
+        return map;
     }
 }

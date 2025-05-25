@@ -22,47 +22,106 @@
 
 package trycb.config;
 
+import java.util.Collections;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.couchbase.config.AbstractCouchbaseConfiguration;
+import org.springframework.data.couchbase.CouchbaseClientFactory;
+import org.springframework.data.couchbase.SimpleCouchbaseClientFactory;
+import org.springframework.data.couchbase.core.CouchbaseTemplate;
+import org.springframework.data.couchbase.core.convert.CouchbaseCustomConversions;
+import org.springframework.data.couchbase.core.convert.MappingCouchbaseConverter;
+import org.springframework.data.couchbase.core.mapping.CouchbaseMappingContext;
 import org.springframework.data.couchbase.repository.config.EnableCouchbaseRepositories;
-import org.springframework.data.couchbase.repository.config.EnableReactiveCouchbaseRepositories;
+import org.springframework.data.couchbase.repository.config.RepositoryOperationsMapping;
+
+import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.Cluster;
+import com.couchbase.client.java.env.ClusterEnvironment;
 
 @Configuration
 @EnableCouchbaseRepositories
-@EnableReactiveCouchbaseRepositories
-public class Database extends AbstractCouchbaseConfiguration {
+public class Database {
 
   @Value("${storage.host}") private String host;
 
-  @Value("${storage.bucket}") private String bucket;
+  @Value("${storage.bucket}") private String bucketName;
 
   @Value("${storage.username}") private String username;
 
   @Value("${storage.password}") private String password;
 
-  @Override
-  public String getConnectionString() {
-    return host;
+  @Value("${storage.scope:inventory}")
+  private String scopeName;
+
+  @Bean
+  public ClusterEnvironment clusterEnvironment() {
+    return ClusterEnvironment.builder().build();
   }
 
-  @Override
-  public String getUserName() {
-    return username;
+  @Bean(destroyMethod = "disconnect")
+  public Cluster couchbaseCluster(ClusterEnvironment couchbaseClusterEnvironment) {
+    try {
+      return Cluster.connect(host, username, password);
+    } catch (Exception e) {
+      throw e;
+    }
   }
 
-  @Override
-  public String getPassword() {
-    return password;
+  @Bean
+  public Bucket getCouchbaseBucket(Cluster cluster) {
+    try {
+      if (!cluster.buckets().getAllBuckets().containsKey(bucketName)) {
+        throw new RuntimeException("Bucket " + bucketName + " not found in Couchbase cluster at " + host);
+      }
+      return cluster.bucket(bucketName);
+    } catch (Exception e) {
+      throw e;
+    }
   }
 
-  @Override
-  public String getBucketName() {
-    return bucket;
+  @Bean
+  public CouchbaseClientFactory couchbaseClientFactory(Cluster cluster) {
+    return new SimpleCouchbaseClientFactory(cluster, bucketName, scopeName);
   }
 
-  @Override
-  public String typeKey() {
-    return "type";
+  @Bean
+  public CouchbaseCustomConversions couchbaseCustomConversions() {
+    return new CouchbaseCustomConversions(Collections.emptyList());
+  }
+
+  @Bean
+  public CouchbaseMappingContext couchbaseMappingContext(CouchbaseCustomConversions conversions) {
+    CouchbaseMappingContext context = new CouchbaseMappingContext();
+    context.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
+    return context;
+  }
+
+  @Bean
+  public MappingCouchbaseConverter mappingCouchbaseConverter(
+          CouchbaseMappingContext mappingContext,
+          CouchbaseCustomConversions conversions
+  ) {
+    MappingCouchbaseConverter converter = new MappingCouchbaseConverter(mappingContext);
+    converter.setCustomConversions(conversions);
+    return converter;
+  }
+
+  @Bean(name = "couchbaseTemplate")
+  public CouchbaseTemplate couchbaseTemplate(
+          CouchbaseClientFactory factory,
+          MappingCouchbaseConverter converter
+  ) {
+    return new CouchbaseTemplate(factory, converter);
+  }
+
+  @Bean
+  public RepositoryOperationsMapping couchbaseRepositoryOperationsMapping(
+          @Qualifier("couchbaseTemplate") CouchbaseTemplate template
+  ) {
+    return new RepositoryOperationsMapping(template);
   }
 }

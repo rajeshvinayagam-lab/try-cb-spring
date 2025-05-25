@@ -22,7 +22,9 @@
 
 package trycb.service;
 
+import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 
 import trycb.config.FlightPath;
 import trycb.model.Result;
@@ -31,13 +33,6 @@ import trycb.model.Result;
  * Service interface for flight path operations
  */
 public interface FlightPathService {
-    /**
-     * Find flights by source airport, destination airport and day
-     * 
-     * @param from source airport name
-     * @param to destination airport name
-     * @param leave day of travel
-     * @return result with list of flights matching criteria
-     */
-    Result<List<FlightPath>> findFlights(String from, String to, String leave);
+
+    Result<List<Map<String, Object>>> findAll(String from, String to, Calendar leave);
 }

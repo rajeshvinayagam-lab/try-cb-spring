@@ -22,10 +22,14 @@
 
 package trycb.config.mongodb;
 
+import java.util.Collections;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.mongodb.config.AbstractMongoClientConfiguration;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 import com.mongodb.client.MongoClient;
@@ -34,21 +38,29 @@ import com.mongodb.client.MongoClients;
 @Configuration
 @Profile("mongodb")
 @EnableMongoRepositories(basePackages = "trycb.config.mongodb")
-public class MongoDBConfiguration extends AbstractMongoClientConfiguration {
+public class MongoDBConfiguration {
 
     @Value("${mongodb.host}") private String host;
     @Value("${mongodb.database}") private String database;
     @Value("${mongodb.username}") private String username;
     @Value("${mongodb.password}") private String password;
 
-    @Override
     protected String getDatabaseName() {
         return database;
     }
 
-    @Override
     public MongoClient mongoClient() {
         String connectionString = String.format("mongodb://%s:%s@%s", username, password, host);
         return MongoClients.create(connectionString);
+    }
+
+    @Bean
+    public MongoTemplate mongoTemplate() {
+        return new MongoTemplate(mongoClient(), database);
+    }
+
+    @Bean(name = "mongoCustomConversions")
+    public MongoCustomConversions mongoCustomConversions() {
+        return new MongoCustomConversions(Collections.emptyList());
     }
 }

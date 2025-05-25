@@ -23,13 +23,16 @@
 package trycb.service.mongodb;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import trycb.config.FlightPath;
@@ -46,60 +49,31 @@ import trycb.service.FlightPathService;
 public class MongoFlightPathService implements FlightPathService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoFlightPathService.class);
-    
+
     private final MongoFlightPathRepository flightPathRepository;
-    private final MongoTemplate mongoTemplate;
-    
+
     @Autowired
-    public MongoFlightPathService(MongoFlightPathRepository flightPathRepository, MongoTemplate mongoTemplate) {
+    public MongoFlightPathService(MongoFlightPathRepository flightPathRepository) {
         this.flightPathRepository = flightPathRepository;
-        this.mongoTemplate = mongoTemplate;
     }
-    
-    @Override
-    public Result<List<FlightPath>> findFlights(String from, String to, String leave) {
-        try {
-            int day = Integer.parseInt(leave);
-            
-            // Log query parameters
-            LOGGER.info("Searching for flights from {} to {} on day {}", from, to, day);
-            
-            // Use the repository to find flights using aggregation
-            List<MongoFlightPath> mongoFlights = flightPathRepository.findFlights(from, to, day);
-            List<FlightPath> flightPaths = convertToFlightPaths(mongoFlights);
-            
-            String queryType = "MongoDB aggregation query for flights from " + from + " to " + to + " on day " + day;
-            return Result.of(flightPaths, queryType);
-        } catch (NumberFormatException e) {
-            LOGGER.error("Invalid day format: {}", leave, e);
-            return Result.error("Invalid day format: " + leave);
-        } catch (Exception e) {
-            LOGGER.error("Error searching for flights", e);
-            return Result.error("Error searching for flights: " + e.getMessage());
+
+    public Result<List<Map<String, Object>>> findAll(String from, String to, Calendar leave) {
+        int day = leave.get(Calendar.DAY_OF_WEEK);
+        LOGGER.info("Searching for flights from {} to {} on day {}", from, to, day);
+
+        List<MongoFlightPath> flightPaths = flightPathRepository.findFlights(from, to, day);
+        Random rand = new Random();
+        List<Map<String, Object>> data = new LinkedList<Map<String, Object>>();
+        for (MongoFlightPath f : flightPaths) {
+            Map<String, Object> row = f.toMap();
+            row.put("flighttime", rand.nextInt(8000));
+            row.put("price", Math.ceil((Integer) row.get("flighttime") / 8 * 100) / 100);
+            row.put("date", leave.getTime());
+            data.add(row);
         }
+
+        String querytype = "MongoDB Query - scoped to inventory: ";
+        return Result.of(data, querytype);
     }
-    
-    /**
-     * Convert MongoDB flight documents to FlightPath objects
-     */
-    private List<FlightPath> convertToFlightPaths(List<MongoFlightPath> mongoFlights) {
-        List<FlightPath> result = new ArrayList<>();
-        
-        for (MongoFlightPath mongoFlight : mongoFlights) {
-            FlightPath flightPath = new FlightPath();
-            flightPath.setId(mongoFlight.getId());
-            flightPath.setName(mongoFlight.getName());
-            flightPath.setAirlineid(mongoFlight.getAirlineid());
-            flightPath.setFlight(mongoFlight.getFlight());
-            flightPath.setDay(mongoFlight.getDay());
-            flightPath.setUtc(mongoFlight.getUtc());
-            flightPath.setSourceairport(mongoFlight.getSourceairport());
-            flightPath.setDestinationairport(mongoFlight.getDestinationairport());
-            flightPath.setEquipment(mongoFlight.getEquipment());
-            
-            result.add(flightPath);
-        }
-        
-        return result;
-    }
+
 }

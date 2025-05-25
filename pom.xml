@@ -38,7 +38,7 @@
             <artifactId>spring-data-couchbase</artifactId>
             <version>4.3.0</version>
         </dependency>
-        
+
         <!-- MongoDB support -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -89,6 +89,13 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-ui</artifactId>
             <version>1.5.9</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.38</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

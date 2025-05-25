@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import trycb.model.Error;
 import trycb.model.IValue;
 import trycb.service.Airport;
+import trycb.service.AirportService;
 
 @RestController
 @RequestMapping("/api/airports")
@@ -18,9 +19,9 @@ public class AirportController {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AirportController.class);
 
-  private Airport airportService;
+  private AirportService airportService;
 
-  public AirportController(Airport airportService) {
+  public AirportController(AirportService airportService) {
     this.airportService = airportService;
   }
 

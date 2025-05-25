@@ -24,6 +24,7 @@ package trycb.service.mongodb;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,76 +46,109 @@ import trycb.service.AirportService;
 public class MongoAirportService implements AirportService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoAirportService.class);
-    
+
     private final MongoAirportRepository airportRepository;
-    
+
     @Autowired
     public MongoAirportService(MongoAirportRepository airportRepository) {
         this.airportRepository = airportRepository;
     }
-    
-    @Override
-    public Result<List<Airport>> findAirports(String name) {
-        try {
-            List<MongoAirport> mongoAirports = airportRepository.findByAirportnameStartsWith(name.toUpperCase());
-            List<Airport> airports = convertToAirports(mongoAirports);
-            
-            String queryType = "MongoDB query for airports with name starting with: " + name;
-            return Result.of(airports, queryType);
-        } catch (Exception e) {
-            LOGGER.error("Error finding airports by name {}", name, e);
-            return Result.error("Error finding airports: " + e.getMessage());
-        }
-    }
-    
-    @Override
-    public Result<List<Airport>> findAirportsByFaa(String faa) {
-        try {
-            List<MongoAirport> mongoAirports = airportRepository.findByFaa(faa);
-            List<Airport> airports = convertToAirports(mongoAirports);
-            
-            String queryType = "MongoDB query for airports with FAA code: " + faa;
-            return Result.of(airports, queryType);
-        } catch (Exception e) {
-            LOGGER.error("Error finding airports by FAA {}", faa, e);
-            return Result.error("Error finding airports: " + e.getMessage());
-        }
-    }
-    
-    @Override
-    public Result<List<Airport>> findAirportsByIcao(String icao) {
-        try {
-            List<MongoAirport> mongoAirports = airportRepository.findByIcao(icao);
-            List<Airport> airports = convertToAirports(mongoAirports);
-            
-            String queryType = "MongoDB query for airports with ICAO code: " + icao;
-            return Result.of(airports, queryType);
-        } catch (Exception e) {
-            LOGGER.error("Error finding airports by ICAO {}", icao, e);
-            return Result.error("Error finding airports: " + e.getMessage());
-        }
-    }
-    
+
     /**
-     * Convert MongoDB airports to Airport entities
+     * Find all airports.
      */
-    private List<Airport> convertToAirports(List<MongoAirport> mongoAirports) {
-        List<Airport> result = new ArrayList<>();
-        
-        for (MongoAirport mongoAirport : mongoAirports) {
-            Airport airport = new Airport();
-            airport.setId(mongoAirport.getId());
-            airport.setFaa(mongoAirport.getFaa());
-            airport.setIcao(mongoAirport.getIcao());
-            airport.setAirportname(mongoAirport.getAirportname());
-            airport.setCity(mongoAirport.getCity());
-            airport.setCountry(mongoAirport.getCountry());
-            airport.setGeo_lat(mongoAirport.getGeo_lat());
-            airport.setGeo_long(mongoAirport.getGeo_long());
-            
-            result.add(airport);
+    public Result<List<Map<String,Object>>> findAll(String params) {
+        boolean sameCase = (params.equals(params.toUpperCase()) || params.equals(params.toLowerCase()));
+        List<MongoAirport> mongoAirports = null;
+        params = params.toUpperCase();
+        String queryType = null;
+        if (params.length() == 3 && sameCase) {
+            try {
+                mongoAirports = airportRepository.findByFaa(params);
+                queryType = "MongoDB query for airports with FAA code: " + params;
+            }catch(Exception e){
+                e.printStackTrace();
+                throw e;
+            }
+        } else if (params.length() == 4 && sameCase) {
+            mongoAirports = airportRepository.findByIcao(params);
+            queryType = "MongoDB query for airports with ICAO code: " + params;
+        } else {
+            mongoAirports = airportRepository.findByAirportnameStartsWith(params.toUpperCase());
+            queryType = "MongoDB query for airports with name starting with: " + params;
         }
-        
-        return result;
+
+        List<Map<String,Object>> airportList= new ArrayList<>(mongoAirports.size());
+        for(MongoAirport a:mongoAirports){
+            airportList.add(a.toMap());
+        }
+
+        return Result.of(airportList, queryType);
     }
+
+
+//    @Override
+//    public Result<List<Airport>> findAirports(String name) {
+//        try {
+//            List<MongoAirport> mongoAirports = airportRepository.findByAirportnameStartsWith(name.toUpperCase());
+//            List<Airport> airports = convertToAirports(mongoAirports);
+//
+//            String queryType = "MongoDB query for airports with name starting with: " + name;
+//            return Result.of(airports, queryType);
+//        } catch (Exception e) {
+//            LOGGER.error("Error finding airports by name {}", name, e);
+//            return Result.error("Error finding airports: " + e.getMessage());
+//        }
+//    }
+//
+//    @Override
+//    public Result<List<Airport>> findAirportsByFaa(String faa) {
+//        try {
+//            List<MongoAirport> mongoAirports = airportRepository.findByFaa(faa);
+//            List<Airport> airports = convertToAirports(mongoAirports);
+//
+//            String queryType = "MongoDB query for airports with FAA code: " + faa;
+//            return Result.of(airports, queryType);
+//        } catch (Exception e) {
+//            LOGGER.error("Error finding airports by FAA {}", faa, e);
+//            return Result.error("Error finding airports: " + e.getMessage());
+//        }
+//    }
+//
+//    @Override
+//    public Result<List<Airport>> findAirportsByIcao(String icao) {
+//        try {
+//            List<MongoAirport> mongoAirports = airportRepository.findByIcao(icao);
+//            List<Airport> airports = convertToAirports(mongoAirports);
+//
+//            String queryType = "MongoDB query for airports with ICAO code: " + icao;
+//            return Result.of(airports, queryType);
+//        } catch (Exception e) {
+//            LOGGER.error("Error finding airports by ICAO {}", icao, e);
+//            return Result.error("Error finding airports: " + e.getMessage());
+//        }
+//    }
+//
+//    /**
+//     * Convert MongoDB airports to Airport entities
+//     */
+//    private List<Airport> convertToAirports(List<MongoAirport> mongoAirports) {
+//        List<Airport> result = new ArrayList<>();
+//
+//        for (MongoAirport mongoAirport : mongoAirports) {
+//            Airport airport = new Airport();
+//            airport.setId(mongoAirport.getId());
+//            airport.setFaa(mongoAirport.getFaa());
+//            airport.setIcao(mongoAirport.getIcao());
+//            airport.setAirportname(mongoAirport.getAirportname());
+//            airport.setCity(mongoAirport.getCity());
+//            airport.setCountry(mongoAirport.getCountry());
+//            airport.setGeo_lat(mongoAirport.getGeo_lat());
+//            airport.setGeo_long(mongoAirport.getGeo_long());
+//
+//            result.add(airport);
+//        }
+//
+//        return result;
+//    }
 }

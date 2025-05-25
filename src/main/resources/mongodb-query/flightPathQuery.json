@@ -1,0 +1,60 @@
+[
+  {
+    $match: {
+      sourceairport: { $exists: true },
+      destinationairport: { $exists: true }
+    }
+  },
+  {
+    $lookup: {
+      from: "airport",
+      localField: "sourceairport",
+      foreignField: "faa",
+      as: "src"
+    }
+  },
+  { $unwind: "$src" },
+  {
+    $match: {
+      "src.airportname": "San Francisco Intl"
+    }
+  },
+  {
+    $lookup: {
+      from: "airport",
+      localField: "destinationairport",
+      foreignField: "faa",
+      as: "dst"
+    }
+  },
+  { $unwind: "$dst" },
+  {
+    $match: {
+      "dst.airportname": "Los Angeles Intl"
+    }
+  },
+  {
+    $lookup: {
+      from: "airline",
+      localField: "airlineid",
+      foreignField: "_id",
+      as: "airline"
+    }
+  },
+  { $unwind: "$airline" },
+  { $unwind: "$schedule" },
+  { $match: { "schedule.day": 1 } },
+  {
+    $project: {
+      id: "$_id",
+      airlineid: "$airlineid",
+      name: "$airline.name",
+      flight: "$schedule.flight",
+      day: "$schedule.day",
+      utc: "$schedule.utc",
+      sourceairport: "$sourceairport",
+      destinationairport: "$destinationairport",
+      equipment: "$equipment"
+    }
+  }
+]

@@ -49,102 +49,108 @@ public class MongoBookingService implements BookingService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoBookingService.class);
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-    
+
     private final MongoBookingRepository bookingRepository;
-    
+
     @Autowired
     public MongoBookingService(MongoBookingRepository bookingRepository) {
         this.bookingRepository = bookingRepository;
     }
-    
+
     @Override
     public Result<List<Booking>> findBookingsByUser(String username) {
+        List<Booking> bookings = null;
+        String queryType = null;
         try {
             // Find bookings for the user
             List<MongoBooking> mongoBookings = bookingRepository.findByUsername(username);
-            List<Booking> bookings = convertToBookings(mongoBookings);
-            
-            String queryType = "MongoDB query for bookings by username: " + username;
-            return Result.of(bookings, queryType);
+            bookings = convertToBookings(mongoBookings);
+
+            queryType = "MongoDB query for bookings by username: " + username;
+
         } catch (Exception e) {
             LOGGER.error("Error finding bookings for user {}", username, e);
-            return Result.error("Error finding bookings: " + e.getMessage());
+//            return Result.error("Error finding bookings: " + e.getMessage());
         }
+        return Result.of(bookings, queryType);
     }
-    
+
     @Override
     public Result<Booking> createBooking(String username, Booking newBooking) {
+        Booking savedBooking = null;
+        String queryType = null;
         try {
             // Set the username and generate an ID
-            newBooking.setUsername(username);
-            if (newBooking.getId() == null || newBooking.getId().isEmpty()) {
-                newBooking.setId("booking::" + UUID.randomUUID().toString());
+            newBooking.name = username;
+            if (newBooking.bookingId == null || newBooking.bookingId.isEmpty()) {
+                newBooking.bookingId = "booking::" + UUID.randomUUID().toString();
             }
-            
+
             // Set booked on date if not provided
-            if (newBooking.getBookedon() == null || newBooking.getBookedon().isEmpty()) {
-                newBooking.setBookedon(DATE_FORMAT.format(new Date()));
+            if (newBooking.date == null || newBooking.date.isEmpty()) {
+                newBooking.date = DATE_FORMAT.format(new Date());
             }
-            
+
             // Convert to MongoDB entity and save
             MongoBooking mongoBooking = convertToMongoBooking(newBooking);
             mongoBooking = bookingRepository.save(mongoBooking);
-            
+
             // Convert back to Booking
-            Booking savedBooking = convertToBooking(mongoBooking);
-            
-            String queryType = "MongoDB insert for new booking";
-            return Result.of(savedBooking, queryType);
+            savedBooking = convertToBooking(mongoBooking);
+
+            queryType = "MongoDB insert for new booking";
+
         } catch (Exception e) {
             LOGGER.error("Error creating booking for user {}", username, e);
-            return Result.error("Error creating booking: " + e.getMessage());
+//            return Result.error("Error creating booking: " + e.getMessage());
         }
+        return Result.of(savedBooking, queryType);
     }
-    
+
     /**
      * Convert a MongoDB booking to the Booking entity
      */
     private Booking convertToBooking(MongoBooking mongoBooking) {
         Booking booking = new Booking();
-        booking.setId(mongoBooking.getId());
-        booking.setUsername(mongoBooking.getUsername());
-        booking.setFlight(mongoBooking.getFlight());
-        booking.setPrice(mongoBooking.getPrice());
-        booking.setDate(mongoBooking.getDate());
-        booking.setSourceairport(mongoBooking.getSourceairport());
-        booking.setDestinationairport(mongoBooking.getDestinationairport());
-        booking.setBookedon(mongoBooking.getBookedon());
-        
+        booking.bookingId = mongoBooking.getId();
+        booking.name = mongoBooking.getUsername();
+        booking.flight = mongoBooking.getFlight();
+        booking.price = Integer.valueOf(mongoBooking.getPrice());
+//        booking.setDate(mongoBooking.getDate());
+//        booking.setSourceairport(mongoBooking.getSourceairport());
+//        booking.setDestinationairport(mongoBooking.getDestinationairport());
+//        booking.setBookedon(mongoBooking.getBookedon());
+
         return booking;
     }
-    
+
     /**
      * Convert a list of MongoDB bookings to Booking entities
      */
     private List<Booking> convertToBookings(List<MongoBooking> mongoBookings) {
         List<Booking> result = new ArrayList<>();
-        
+
         for (MongoBooking mongoBooking : mongoBookings) {
             result.add(convertToBooking(mongoBooking));
         }
-        
+
         return result;
     }
-    
+
     /**
      * Convert a Booking entity to a MongoDB booking
      */
     private MongoBooking convertToMongoBooking(Booking booking) {
         MongoBooking mongoBooking = new MongoBooking();
-        mongoBooking.setId(booking.getId());
-        mongoBooking.setUsername(booking.getUsername());
-        mongoBooking.setFlight(booking.getFlight());
-        mongoBooking.setPrice(booking.getPrice());
-        mongoBooking.setDate(booking.getDate());
-        mongoBooking.setSourceairport(booking.getSourceairport());
-        mongoBooking.setDestinationairport(booking.getDestinationairport());
-        mongoBooking.setBookedon(booking.getBookedon());
-        
+        mongoBooking.setId(booking.bookingId);
+//        mongoBooking.setUsername(booking.getUsername());
+//        mongoBooking.setFlight(booking.getFlight());
+//        mongoBooking.setPrice(booking.getPrice());
+//        mongoBooking.setDate(booking.getDate());
+//        mongoBooking.setSourceairport(booking.getSourceairport());
+//        mongoBooking.setDestinationairport(booking.getDestinationairport());
+//        mongoBooking.setBookedon(booking.getBookedon());
+
         return mongoBooking;
     }
 }

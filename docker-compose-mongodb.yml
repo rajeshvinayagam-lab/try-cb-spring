@@ -10,11 +10,12 @@ services:
       - MONGODB_USERNAME=admin
       - MONGODB_PASSWORD=password
     depends_on:
+      - db
       - mongodb
     ports:
       - 8080:8080
     container_name: try-cb-api-mongodb
-  
+
   frontend:
     build: "https://github.com/couchbaselabs/try-cb-frontend-v2.git#7.0"
     depends_on:
@@ -24,6 +25,17 @@ services:
     container_name: try-cb-fe-mongodb
     entrypoint: ["wait-for-it", "backend:8080", "--timeout=400", "--strict", "--", "npm", "run", "serve"]
 
+  db:
+    image: couchbase/server-sandbox:7.0.0
+    ports:
+      - "8091-8095:8091-8095"
+      - "11210:11210"
+    expose: # expose ports 8091 & 8094 to other containers (mainly for backend)
+      - "8091"
+      - "8094"
+    mem_limit: 2g  # allocate 2GB
+    container_name: couchbase-sandbox-7.0.0
+
   mongodb:
     image: mongo:5.0
     environment:
@@ -32,6 +44,7 @@ services:
       - MONGO_INITDB_DATABASE=travel-sample
     ports:
       - 27017:27017
+    mem_limit: 4g  # allocate 4GB
     volumes:
       - mongodb-data:/data/db
       - ./mongodb-init:/docker-entrypoint-initdb.d

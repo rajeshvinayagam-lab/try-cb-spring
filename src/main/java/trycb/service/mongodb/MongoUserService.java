@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
@@ -47,80 +48,80 @@ import trycb.service.UserService;
 public class MongoUserService implements UserService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoUserService.class);
-    
+
     private final MongoUserRepository userRepository;
     private final TokenService tokenService;
-    
+
     @Autowired
     public MongoUserService(MongoUserRepository userRepository, TokenService tokenService) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
     }
-    
+
     @Override
     public Result<Map<String, Object>> register(String username, String password, String name) {
         if (userRepository.existsByUsername(username)) {
-            return Result.error("Username already exists.");
+            throw new AuthenticationCredentialsNotFoundException("Username already exists.");
         }
-        
+
         try {
             // Hash the password
             String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-            
+
             // Create the user
             MongoUser user = new MongoUser();
             user.setId("user::" + username);
             user.setUsername(username);
             user.setPassword(hashedPassword);
             user.setName(name);
-            
+
             // Save the user
             userRepository.save(user);
-            
+
             // Create a token
-            String token = tokenService.createTokenForUser(username);
-            
+            String token = tokenService.buildToken(username);
+
             // Return the success response
             Map<String, Object> result = new HashMap<>();
             result.put("token", token);
             result.put("user", username);
-            
+
             return Result.of(result, "User registration successful");
         } catch (Exception e) {
             LOGGER.error("Error registering user", e);
-            return Result.error("Error registering user: " + e.getMessage());
+            throw new AuthenticationCredentialsNotFoundException("Error registering user: " + e.getMessage());
         }
     }
-    
+
     @Override
     public Result<Map<String, Object>> login(String username, String password) {
         try {
             // Find the user
             Optional<MongoUser> userOpt = userRepository.findByUsername(username);
-            
+
             if (!userOpt.isPresent()) {
-                return Result.error("Invalid username or password");
+                throw new AuthenticationCredentialsNotFoundException("Invalid username or password");
             }
-            
+
             MongoUser user = userOpt.get();
-            
+
             // Check the password
             if (!BCrypt.checkpw(password, user.getPassword())) {
-                return Result.error("Invalid username or password");
+                throw new AuthenticationCredentialsNotFoundException("Invalid username or password");
             }
-            
+
             // Create a token
-            String token = tokenService.createTokenForUser(username);
-            
+            String token = tokenService.buildToken(username);
+
             // Return the success response
             Map<String, Object> result = new HashMap<>();
             result.put("token", token);
             result.put("user", username);
-            
+
             return Result.of(result, "Login successful");
         } catch (Exception e) {
             LOGGER.error("Error logging in", e);
-            return Result.error("Error logging in: " + e.getMessage());
+            throw new AuthenticationCredentialsNotFoundException("Error logging in: " + e.getMessage());
         }
     }
 }

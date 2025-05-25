@@ -31,6 +31,7 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import com.couchbase.client.java.Cluster;
@@ -39,7 +40,8 @@ import trycb.config.FlightPathRepository;
 import trycb.model.Result;
 
 @Service
-public class FlightPath {
+@Profile("couchbase")
+public class FlightPath implements FlightPathService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlightPath.class);
 

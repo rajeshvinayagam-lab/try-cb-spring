@@ -23,21 +23,20 @@
 package trycb.service.mongodb;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.TextCriteria;
-import org.springframework.data.mongodb.core.query.TextQuery;
 import org.springframework.stereotype.Service;
 
-import trycb.config.mongodb.MongoHotel;
+import com.mongodb.client.MongoCollection;
+
 import trycb.config.mongodb.MongoHotelRepository;
 import trycb.model.Result;
 import trycb.service.HotelService;
@@ -50,100 +49,120 @@ import trycb.service.HotelService;
 public class MongoHotelService implements HotelService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoHotelService.class);
-    
+
     private final MongoHotelRepository hotelRepository;
     private final MongoTemplate mongoTemplate;
-    
+
     @Autowired
     public MongoHotelService(MongoHotelRepository hotelRepository, MongoTemplate mongoTemplate) {
         this.hotelRepository = hotelRepository;
         this.mongoTemplate = mongoTemplate;
     }
-    
-    @Override
+
+//    public Result<List<Map<String, Object>>> findHotels(String location, String description) {
+//        MongoCollection<Document> collection = mongoTemplate.getCollection("hotel");
+//
+//        List<Document> must = new ArrayList<>();
+//        must.add(new Document("text", new Document("query", "hotel")
+//                .append("path", "type")));
+//
+//        if (location != null && !location.isEmpty() && !"*".equals(location)) {
+//            List<String> locationFields = Arrays.asList("country", "city", "state", "address");
+//            List<Document> should = new ArrayList<>();
+//            for (String field : locationFields) {
+//                should.add(new Document("phrase", new Document("query", location).append("path", field)));
+//            }
+//            must.add(new Document("compound", new Document("should", should)));
+//        }
+//
+//        if (description != null && !description.isEmpty() && !"*".equals(description)) {
+//            List<String> descFields = Arrays.asList("description", "name");
+//            List<Document> should = new ArrayList<>();
+//            for (String field : descFields) {
+//                should.add(new Document("phrase", new Document("query", description).append("path", field)));
+//            }
+//            must.add(new Document("compound", new Document("should", should)));
+//        }
+//
+//        Document searchStage = new Document("$search", new Document("index", "hotels-index")
+//                .append("compound", new Document("must", must)));
+//
+//        List<Document> pipeline = Arrays.asList(
+//                searchStage,
+//                new Document("$limit", 100),
+//                new Document("$project", new Document("name", 1)
+//                        .append("description", 1)
+//                        .append("address", 1)
+//                        .append("score", new Document("$meta", "searchScore")))
+//        );
+//
+//        List<Document> results = collection.aggregate(pipeline).into(new ArrayList<>());
+//
+//        List<Map<String, Object>> resultList = new ArrayList<>();
+//        for (Document doc : results) {
+//            resultList.add(doc);
+//        }
+//
+//        String queryType = "MongoDB Atlas FTS search - scoped to: hotel within fields country, city, state, address, name, description";
+//        return Result.of(resultList, queryType);
+//    }
+
     public Result<List<Map<String, Object>>> findHotels(String location, String description) {
-        // Build text search criteria
-        List<String> searchTerms = new ArrayList<>();
+        MongoCollection<Document> collection = mongoTemplate.getCollection("hotel");
+
+        // Build the text search string
+        StringBuilder searchQuery = new StringBuilder();
         if (location != null && !location.isEmpty() && !"*".equals(location)) {
-            searchTerms.add(location);
+            searchQuery.append(" ").append(location);
         }
-        
         if (description != null && !description.isEmpty() && !"*".equals(description)) {
-            searchTerms.add(description);
+            searchQuery.append(" ").append(description);
         }
-        
-        List<MongoHotel> hotels;
-        String queryType;
-        
-        if (searchTerms.isEmpty()) {
-            // If no search terms, get all hotels
-            hotels = hotelRepository.findByType("hotel");
-            queryType = "MongoDB query for all hotels";
-        } else {
-            // Create text search criteria
-            TextCriteria criteria = TextCriteria.forDefaultLanguage();
-            criteria.matchingAny(searchTerms.toArray(new String[0]));
-            
-            // Create and execute text query
-            TextQuery query = TextQuery.queryText(criteria).sortByScore();
-            query.limit(100);
-            
-            logQuery("Text search for terms: " + String.join(", ", searchTerms));
-            hotels = mongoTemplate.find(query, MongoHotel.class);
-            queryType = "MongoDB text search on hotel collection";
+
+        // Text match stage
+        Document matchStage = new Document("$match",
+                new Document("$text", new Document("$search", searchQuery.toString()))
+        );
+
+        // Project stage with textScore
+        Document projectStage = new Document("$project", new Document("_id", 0)
+                .append("name", 1)
+                .append("description", 1)
+                .append("address", 1)
+//                .append("score", new Document("$meta", "textScore"))
+        );
+
+        // Sort by textScore (optional but recommended)
+//        Document sortStage = new Document("$sort", new Document("score", new Document("$meta", "textScore")));
+
+        // Limit
+        Document limitStage = new Document("$limit", 100);
+
+        // Build pipeline
+//        List<Document> pipeline = Arrays.asList(matchStage, sortStage, projectStage, limitStage);
+        List<Document> pipeline = Arrays.asList(matchStage, projectStage, limitStage);
+
+        // Run aggregation
+        List<Document> results = collection.aggregate(pipeline).into(new ArrayList<>());
+
+        // Transform results
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (Document doc : results) {
+            resultList.add(doc);
         }
-        
-        return Result.of(convertToMapList(hotels), queryType);
+
+        String queryType = "Local MongoDB Text Search - using $text index across type, country, city, state, address, name, description";
+        return Result.of(resultList, queryType);
     }
-    
+
+
     @Override
     public Result<List<Map<String, Object>>> findHotels(String description) {
         return findHotels("*", description);
     }
-    
+
     @Override
     public Result<List<Map<String, Object>>> findAllHotels() {
-        List<MongoHotel> hotels = hotelRepository.findByType("hotel");
-        String queryType = "MongoDB query for all hotels";
-        return Result.of(convertToMapList(hotels), queryType);
-    }
-    
-    /**
-     * Convert MongoDB hotel documents to the same map format used by the Couchbase implementation
-     */
-    private List<Map<String, Object>> convertToMapList(List<MongoHotel> hotels) {
-        List<Map<String, Object>> result = new ArrayList<>();
-        
-        for (MongoHotel hotel : hotels) {
-            Map<String, Object> map = new HashMap<>();
-            map.put("name", hotel.getName());
-            map.put("description", hotel.getDescription());
-            
-            // Build the address string in the same format as the Couchbase implementation
-            StringBuilder fullAddr = new StringBuilder();
-            if (hotel.getAddress() != null)
-                fullAddr.append(hotel.getAddress()).append(", ");
-            if (hotel.getCity() != null)
-                fullAddr.append(hotel.getCity()).append(", ");
-            if (hotel.getState() != null)
-                fullAddr.append(hotel.getState()).append(", ");
-            if (hotel.getCountry() != null)
-                fullAddr.append(hotel.getCountry());
-            
-            if (fullAddr.length() > 2 && fullAddr.charAt(fullAddr.length() - 2) == ',')
-                fullAddr.delete(fullAddr.length() - 2, fullAddr.length() - 1);
-            
-            map.put("address", fullAddr.toString());
-            result.add(map);
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Helper method to log the executing query
-     */
-    private static void logQuery(String query) {
-        LOGGER.info("Executing MongoDB Query: {}", query);
+        return findHotels("*", "*");
     }
 }

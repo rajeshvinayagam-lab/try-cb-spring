@@ -36,23 +36,39 @@ import org.springframework.stereotype.Repository;
 @Repository("mongoFlightPathRepository")
 @Profile("mongodb")
 public interface MongoFlightPathRepository extends MongoRepository<MongoFlightPath, String> {
-    
+
     /**
      * Find flights by source and destination airports, and day
      */
     @Query("{$and: [{'sourceairport': ?0}, {'destinationairport': ?1}, {'day': ?2}]}")
     List<MongoFlightPath> findBySourceAndDestinationAndDay(String sourceAirport, String destinationAirport, int day);
-    
+
     /**
      * Finds flights using an aggregation pipeline to join data from multiple collections (airport, route, airline)
      */
     @Aggregation(pipeline = {
-        "{ $lookup: { from: 'airport', localField: 'sourceairport', foreignField: 'faa', as: 'sourceAirports' } }",
-        "{ $unwind: '$sourceAirports' }",
-        "{ $lookup: { from: 'airport', localField: 'destinationairport', foreignField: 'faa', as: 'destAirports' } }",
-        "{ $unwind: '$destAirports' }",
-        "{ $match: { $and: [ { 'sourceAirports.airportname': ?0 }, { 'destAirports.airportname': ?1 }, { 'day': ?2 } ] } }",
-        "{ $project: { _id: 1, name: 1, airlineid: 1, flight: 1, day: 1, utc: 1, sourceairport: 1, destinationairport: 1, equipment: 1 } }"
+            "{ $match: { sourceairport: { $exists: true }, destinationairport: { $exists: true } } }",
+            "{ $lookup: { from: 'airport', localField: 'sourceairport', foreignField: 'faa', as: 'src' } }",
+            "{ $unwind: '$src' }",
+            "{ $match: { 'src.airportname': ?0 } }",
+            "{ $lookup: { from: 'airport', localField: 'destinationairport', foreignField: 'faa', as: 'dst' } }",
+            "{ $unwind: '$dst' }",
+            "{ $match: { 'dst.airportname': ?1 } }",
+            "{ $lookup: { from: 'airline', localField: 'airlineid', foreignField: '_id', as: 'airline' } }",
+            "{ $unwind: '$airline' }",
+            "{ $unwind: '$schedule' }",
+            "{ $match: { 'schedule.day': ?2 } }",
+            "{ $project: { " +
+                    "id: '$_id', " +
+                    "airlineid: '$airlineid', " +
+                    "name: '$airline.name', " +
+                    "flight: '$schedule.flight', " +
+                    "day: '$schedule.day', " +
+                    "utc: '$schedule.utc', " +
+                    "sourceairport: '$sourceairport', " +
+                    "destinationairport: '$destinationairport', " +
+                    "equipment: '$equipment' " +
+                    "} }"
     })
     List<MongoFlightPath> findFlights(String sourceAirport, String destinationAirport, int day);
 }

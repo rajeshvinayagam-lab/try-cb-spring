@@ -23,6 +23,7 @@
 package trycb.service;
 
 import java.util.List;
+import java.util.Map;
 
 import trycb.config.Airport;
 import trycb.model.Result;
@@ -31,27 +32,6 @@ import trycb.model.Result;
  * Service interface for airport operations
  */
 public interface AirportService {
-    /**
-     * Find airports by name (starts with)
-     * 
-     * @param name the airport name prefix to search for
-     * @return result with list of matching airports
-     */
-    Result<List<Airport>> findAirports(String name);
-    
-    /**
-     * Find airports by FAA code
-     * 
-     * @param faa the FAA code
-     * @return result with list of matching airports (usually just one)
-     */
-    Result<List<Airport>> findAirportsByFaa(String faa);
-    
-    /**
-     * Find airports by ICAO code
-     * 
-     * @param icao the ICAO code
-     * @return result with list of matching airports (usually just one)
-     */
-    Result<List<Airport>> findAirportsByIcao(String icao);
+
+    Result<List<Map<String,Object>>> findAll(String params);
 }

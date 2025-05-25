@@ -47,6 +47,11 @@ public class Airport {
   String country;
 
   @PersistenceConstructor
+  public Airport() {
+
+  }
+
+  @PersistenceConstructor
   public Airport(String id, String airportname, String faa, String city, String country, String icao) {
     this.id = id;
     this.airportname = airportname;

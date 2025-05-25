@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import trycb.model.Error;
 import trycb.model.IValue;
 import trycb.service.FlightPath;
+import trycb.service.FlightPathService;
 
 @RestController
 @RequestMapping("/api/flightPaths")
@@ -23,9 +24,9 @@ public class FlightPathController {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlightPathController.class);
 
-  public FlightPath flightPathService;
+  public FlightPathService flightPathService;
 
-  public FlightPathController(FlightPath flightPathService) {
+  public FlightPathController(FlightPathService flightPathService) {
     this.flightPathService = flightPathService;
   }
 
