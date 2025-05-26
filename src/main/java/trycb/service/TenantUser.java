@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -160,11 +161,21 @@ public class TenantUser implements TenantUserService {
       booking.sourceairport = t.get("sourceairport").getAsString();
       booking.destinationairport = t.get("destinationairport").getAsString();
       booking.flight = t.get("flight").getAsString();
-      booking.utc = t.get("utc").getAsString();
-      booking.airlineid = t.get("airlineid").getAsString();
-      booking.date = t.get("date").getAsString();
+
+      if(Objects.nonNull(t.get("utc"))) {
+        booking.utc = t.get("utc").getAsString();
+      }
+      if(Objects.nonNull(t.get("airlineid"))) {
+        booking.airlineid = t.get("airlineid").getAsString();
+      }
+      if(Objects.nonNull(t.get("date"))) {
+        booking.date = t.get("date").getAsString();
+      }
       booking.price = t.get("price").getAsInt();
-      booking.day = t.get("day").getAsInt();
+      if(Objects.nonNull(t.get("day"))) {
+        booking.day = t.get("day").getAsInt();
+      }
+
       bookingRepository.save(booking);
       allBookedFlights.add(booking.bookingId);
       added.add(t);
