@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    environment:
+      - MONGODB_URI=<mongodb-cloud-connection-string>
+    depends_on:
+      - db
+    ports:
+      - 8080:8080
+    container_name: try-cb-api-mongodb
+
+  frontend:
+    build: "https://github.com/couchbaselabs/try-cb-frontend-v2.git#7.0"
+    depends_on:
+      - backend
+    ports:
+      - 8081:8081
+    container_name: try-cb-fe-mongodb
+    entrypoint: ["wait-for-it", "backend:8080", "--timeout=400", "--strict", "--", "npm", "run", "serve"]
+
+  db:
+    image: couchbase/server-sandbox:7.0.0
+    ports:
+      - "8091-8095:8091-8095"
+      - "11210:11210"
+    expose: # expose ports 8091 & 8094 to other containers (mainly for backend)
+      - "8091"
+      - "8094"
+    mem_limit: 2g  # allocate 2GB
+    container_name: couchbase-sandbox-7.0.0
+
+volumes:
+  mongodb-data:

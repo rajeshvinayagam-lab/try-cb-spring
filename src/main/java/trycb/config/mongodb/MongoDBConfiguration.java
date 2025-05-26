@@ -43,13 +43,19 @@ public class MongoDBConfiguration {
     @Value("${mongodb.database}") private String database;
     @Value("${mongodb.username}") private String username;
     @Value("${mongodb.password}") private String password;
+    @Value("${mongodb.cloud}") private String mongodbCloud;
 
     protected String getDatabaseName() {
         return database;
     }
 
     public MongoClient mongoClient() {
-        String connectionString = String.format("mongodb://%s:%s@%s", username, password, host);
+        String connectionString = null;
+        if (mongodbCloud == null || mongodbCloud.isEmpty() || !mongodbCloud.equalsIgnoreCase("true")) {
+            connectionString = String.format("mongodb://%s:%s@%s", username, password, host);
+        } else if (mongodbCloud.equalsIgnoreCase("true")){
+            connectionString = String.format("mongodb+srv://%s:%s@%s", username, password, host);
+        }
         return MongoClients.create(connectionString);
     }
 
