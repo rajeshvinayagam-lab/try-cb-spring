@@ -24,6 +24,14 @@ We recommend running the application with Docker, which starts up all components
 but you can also run it in a Mix-and-Match style, which we'll decribe below.
 
 ## Running the application with Docker
+Added feature flag to run the application with MongoDB as an alternative to Couchbase.
+- possible value for READ_FROM_DATABASE are **mongodb** or **couchbase**
+
+```READ_FROM_DATABASE=mongodb```
+- possible value for WRITE_TO_DATABASE are **mongodb** or **couchbase** or **both**
+
+```WRITE_TO_DATABASE=both```
+
 
 You will need [Docker](https://docs.docker.com/get-docker/) installed on your machine in order to run this application as we have defined a [_Dockerfile_](Dockerfile) and a [_docker-compose.yml_](docker-compose.yml) to run Couchbase Server 7.0.0 beta, the front-end [Vue app](https://github.com/couchbaselabs/try-cb-frontend-v2.git) and the Java REST API.
 
@@ -36,6 +44,13 @@ To launch the full application with MongoDB database:
 - It will create indexes on the `travel-sample` bucket/collection in both databases.
 - It will also migrate `travel-sample` from Couchbase to MongoDB.
 - It will also start the Java backend application and the Vue frontend app.
+
+Commands to run or restart a particular container:
+- To run backend API - ```docker-compose --file docker-compose-mongodb.yml up --build backend```
+- To run frontend App - ```docker-compose --file docker-compose-mongodb.yml up --build frontend```
+- To run couchbase database - ```docker-compose --file docker-compose-mongodb.yml up --build db```
+- To run mongodb database - ```docker-compose --file docker-compose-mongodb.yml up --build mongodb```
+- After rerun of databases, restart of frontend application and backend APIs is required 
 
 To launch the full application, simply run this command from a terminal:
 
