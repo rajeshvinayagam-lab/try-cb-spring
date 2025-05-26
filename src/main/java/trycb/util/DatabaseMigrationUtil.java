@@ -63,7 +63,6 @@ import com.mongodb.client.result.InsertManyResult;
  * Utility for database migration and setup tasks
  */
 @Component
-@Profile("mongodb")
 public class DatabaseMigrationUtil {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseMigrationUtil.class);

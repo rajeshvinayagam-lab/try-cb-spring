@@ -22,15 +22,20 @@
 
 package trycb.service;
 
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.crypto.bcrypt.BCrypt;
@@ -38,22 +43,28 @@ import org.springframework.stereotype.Service;
 
 import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
-import com.couchbase.client.java.json.JsonArray;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.kv.UpsertOptions;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 
 import trycb.config.Booking;
 import trycb.config.BookingRepository;
 import trycb.config.User;
 import trycb.config.UserRepository;
 import trycb.model.Result;
+import trycb.service.mongodb.MongoTenantUserService;
 
 @Service
-public class TenantUser {
+public class TenantUser implements TenantUserService {
 
   private final TokenService jwtService;
   private final UserRepository userRepository;
   private final BookingRepository bookingRepository;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TenantUser.class);
 
   public TenantUser(TokenService tokenService, UserRepository userRepository, BookingRepository bookingRepository) {
     this.jwtService = tokenService;
@@ -64,7 +75,7 @@ public class TenantUser {
   /**
    * Try to log the given tenant user in.
    */
-  public Result<Map<String, Object>> login(final String tenant, final String username, final String password) {
+  public Result<Map<String, Object>> login(final String tenant, final String username, final String password) throws JsonProcessingException {
     UserRepository userRepository = this.userRepository.withScope(tenant);
     String queryType = String.format("KV get - scoped to %s.users: for password field in document %s", tenant,
         username);
@@ -72,14 +83,19 @@ public class TenantUser {
     try {
       userHolder = userRepository.findById(username);
     } catch (DocumentNotFoundException ex) {
-      throw new AuthenticationCredentialsNotFoundException("Bad Username or Password");
+      throw new AuthenticationCredentialsNotFoundException("User not found - Bad Username or Password");
     }
     User res = userHolder.get();
-    if (BCrypt.checkpw(password, res.password)) {
+    LOGGER.info("passhash {} and password {}", res.password, password);
+    String md5Password = password;
+    if(!isValidMD5(password)) {
+      md5Password = toMD5(password);
+    }
+    if (BCrypt.checkpw(md5Password, res.password)) {
       Map<String, Object> data = JsonObject.create().put("token", jwtService.buildToken(username)).toMap();
       return Result.of(data, queryType);
     } else {
-      throw new AuthenticationCredentialsNotFoundException("Bad Username or Password");
+      throw new AuthenticationCredentialsNotFoundException("Incorrect Password");
     }
   }
 
@@ -89,7 +105,11 @@ public class TenantUser {
   public Result<Map<String, Object>> createLogin(final String tenant, final String username, final String password,
       DurabilityLevel expiry) {
     UserRepository userRepository = this.userRepository.withScope(tenant);
-    String passHash = BCrypt.hashpw(password, BCrypt.gensalt());
+    String md5Password = password;
+    if(!isValidMD5(password)) {
+      md5Password = toMD5(password);
+    }
+    String passHash = BCrypt.hashpw(md5Password, BCrypt.gensalt());
     User user = new User(username, passHash);
     UpsertOptions options = UpsertOptions.upsertOptions();
     if (expiry.ordinal() > 0) {
@@ -108,8 +128,7 @@ public class TenantUser {
   /*
    * Register a flight (or flights) for the given tenant user.
    */
-  public Result<Map<String, Object>> registerFlightForUser(final String tenant, final String username,
-      final JsonArray newFlights) {
+  public Result<Map<String, Object>> registerFlightForUser(final String tenant, final String username, final JsonArray newFlights) {
     UserRepository userRepository = this.userRepository.withScope(tenant);
     BookingRepository bookingRepository = this.bookingRepository.withScope(tenant);
     Optional<User> userDataFetch;
@@ -124,7 +143,7 @@ public class TenantUser {
       throw new IllegalArgumentException("No flights in payload");
     }
 
-    JsonArray added = JsonArray.create();
+    JsonArray added = new JsonArray();
     ArrayList<String> allBookedFlights = null;
     if (userData.getFlightIds() != null) {
       allBookedFlights = new ArrayList(Arrays.asList(userData.getFlightIds())); // ArrayList(Arrays.asList(newFlights));
@@ -134,18 +153,18 @@ public class TenantUser {
 
     for (Object newFlight : newFlights) {
       checkFlight(newFlight);
-      JsonObject t = ((JsonObject) newFlight);
-      t.put("bookedon", "try-cb-spring");
+      com.google.gson.JsonObject t = ((com.google.gson.JsonObject) newFlight);
+      t.addProperty("bookedon", "try-cb-spring");
       Booking booking = new Booking(UUID.randomUUID().toString());
-      booking.name = t.getString("name");
-      booking.sourceairport = t.getString("sourceairport");
-      booking.destinationairport = t.getString("destinationairport");
-      booking.flight = t.getString("flight");
-      booking.utc = t.getString("utc");
-      booking.airlineid = t.getString("airlineid");
-      booking.date = t.getString("date");
-      booking.price = t.getInt("price");
-      booking.day = t.getInt("day");
+      booking.name = t.get("name").getAsString();
+      booking.sourceairport = t.get("sourceairport").getAsString();
+      booking.destinationairport = t.get("destinationairport").getAsString();
+      booking.flight = t.get("flight").getAsString();
+      booking.utc = t.get("utc").getAsString();
+      booking.airlineid = t.get("airlineid").getAsString();
+      booking.date = t.get("date").getAsString();
+      booking.price = t.get("price").getAsInt();
+      booking.day = t.get("day").getAsInt();
       bookingRepository.save(booking);
       allBookedFlights.add(booking.bookingId);
       added.add(t);
@@ -154,22 +173,12 @@ public class TenantUser {
     userData.setFlightIds(allBookedFlights.toArray(new String[] {}));
     userRepository.save(userData);
 
-    JsonObject responseData = JsonObject.create().put("added", added);
+    com.google.gson.JsonObject responseData = new com.google.gson.JsonObject();
+    responseData.add("added", added);
 
     String queryType = String.format("KV update - scoped to %s.user: for bookings field in document %s", tenant,
         username);
-    return Result.of(responseData.toMap(), queryType);
-  }
-
-  private static void checkFlight(Object f) {
-    if (f == null || !(f instanceof JsonObject)) {
-      throw new IllegalArgumentException("Each flight must be a non-null object");
-    }
-    JsonObject flight = (JsonObject) f;
-    if (!flight.containsKey("name") || !flight.containsKey("date") || !flight.containsKey("sourceairport")
-        || !flight.containsKey("destinationairport")) {
-      throw new IllegalArgumentException("Malformed flight inside flights payload");
-    }
+    return Result.of(convertJsonObjectToMap(responseData), queryType);
   }
 
   public Result<List<Map<String, Object>>> getFlightsForUser(final String tenant, final String username) {
@@ -204,6 +213,67 @@ public class TenantUser {
     String queryType = String.format("KV get - scoped to %s.user: for %d bookings in document %s", tenant,
         results.size(), username);
     return Result.of(results, queryType);
+  }
+
+  private void checkFlight(Object f) {
+    if (f == null || !(f instanceof com.google.gson.JsonObject)) {
+      throw new IllegalArgumentException("Each flight must be a non-null object");
+    }
+    com.google.gson.JsonObject flight = (com.google.gson.JsonObject) f;
+    if (!flight.has("name") || !flight.has("date") || !flight.has("sourceairport")
+            || !flight.has("destinationairport")) {
+      throw new IllegalArgumentException("Malformed flight inside flights payload");
+    }
+  }
+
+  private Map<String, Object> convertJsonObjectToMap(com.google.gson.JsonObject jsonObject) {
+    Map<String, Object> map = new LinkedHashMap<>();
+
+    for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
+      map.put(entry.getKey(), convertJsonElement(entry.getValue()));
+    }
+
+    return map;
+  }
+
+  private Object convertJsonElement(JsonElement element) {
+    if (element.isJsonNull()) {
+      return null;
+    } else if (element.isJsonPrimitive()) {
+      JsonPrimitive primitive = element.getAsJsonPrimitive();
+      if (primitive.isBoolean()) return primitive.getAsBoolean();
+      if (primitive.isNumber()) return primitive.getAsNumber();
+      if (primitive.isString()) return primitive.getAsString();
+    } else if (element.isJsonArray()) {
+      JsonArray array = element.getAsJsonArray();
+      List<Object> list = new ArrayList<>();
+      for (JsonElement item : array) {
+        list.add(convertJsonElement(item));
+      }
+      return list;
+    } else if (element.isJsonObject()) {
+      return convertJsonObjectToMap(element.getAsJsonObject());
+    }
+
+    return null; // fallback
+  }
+
+  public boolean isValidMD5(String input) {
+    return input != null && input.matches("^[a-fA-F0-9]{32}$");
+  }
+
+  public String toMD5(String input) {
+    try {
+      MessageDigest md = MessageDigest.getInstance("MD5");
+      byte[] digest = md.digest(input.getBytes());
+      StringBuilder hex = new StringBuilder();
+      for (byte b : digest) {
+        hex.append(String.format("%02x", b));
+      }
+      return hex.toString();
+    } catch (Exception e) {
+      throw new RuntimeException("MD5 error", e);
+    }
   }
 
 }

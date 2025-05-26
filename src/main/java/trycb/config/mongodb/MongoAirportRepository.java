@@ -33,25 +33,24 @@ import org.springframework.stereotype.Repository;
  * MongoDB repository for Airport documents
  */
 @Repository("mongoAirportRepository")
-@Profile("mongodb")
 public interface MongoAirportRepository extends MongoRepository<MongoAirport, String> {
-    
+
     /**
      * Find airports by FAA code
      */
     List<MongoAirport> findByFaa(String faa);
-    
+
     /**
      * Find airports by ICAO code
      */
     List<MongoAirport> findByIcao(String icao);
-    
+
     /**
      * Find airports where airportname starts with the given value (case insensitive)
      */
     @Query("{ 'airportname': { $regex: ?0, $options: 'i' } }")
     List<MongoAirport> findByAirportnameStartsWith(String name);
-    
+
     /**
      * Find airports by type
      */

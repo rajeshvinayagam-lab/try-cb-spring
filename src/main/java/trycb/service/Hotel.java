@@ -53,7 +53,6 @@ import trycb.config.HotelRepository;
 import trycb.model.Result;
 
 @Service
-@Profile("couchbase")
 public class Hotel implements HotelService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Hotel.class);

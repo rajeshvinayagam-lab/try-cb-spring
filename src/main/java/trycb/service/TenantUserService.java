@@ -22,30 +22,25 @@
 
 package trycb.service;
 
+import java.util.List;
 import java.util.Map;
+
+import com.couchbase.client.core.msg.kv.DurabilityLevel;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.gson.JsonArray;
 
 import trycb.model.Result;
 
 /**
  * Service interface for user operations
  */
-public interface UserService {
-    /**
-     * Register a new user
-     * 
-     * @param username the username
-     * @param password the password
-     * @param name the name
-     * @return result with token information
-     */
-    Result<Map<String, Object>> register(String username, String password, String name);
-    
-    /**
-     * Login a user
-     * 
-     * @param username the username
-     * @param password the password
-     * @return result with token information
-     */
-    Result<Map<String, Object>> login(String username, String password);
+public interface TenantUserService {
+
+    Result<Map<String, Object>> createLogin(final String tenant, final String username, final String password, DurabilityLevel expiry);
+
+    Result<Map<String, Object>> login(final String tenant, final String username, final String password) throws JsonProcessingException;
+
+    Result<Map<String, Object>> registerFlightForUser(final String tenant, final String username, final JsonArray newFlights);
+
+    Result<List<Map<String, Object>>> getFlightsForUser(final String tenant, final String username);
 }

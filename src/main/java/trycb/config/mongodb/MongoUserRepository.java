@@ -33,19 +33,11 @@ import org.springframework.stereotype.Repository;
  * MongoDB repository for User documents
  */
 @Repository("mongoUserRepository")
-@Profile("mongodb")
 public interface MongoUserRepository extends MongoRepository<MongoUser, String> {
-    
-    /**
-     * Find user by username
-     */
-    Optional<MongoUser> findByUsername(String username);
-    
-    /**
-     * Check if a user with given username exists
-     */
-    boolean existsByUsername(String username);
-    
+
+    @Query(value = "{ 'tenant' : ?0, 'username' : ?1 }")
+    Optional<MongoUser> findByTenantAndUsername(String tenant, String username);
+
     /**
      * Find users by type
      */

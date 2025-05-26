@@ -10,7 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,32 +21,47 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
-import com.couchbase.client.java.json.JsonObject;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import trycb.model.Error;
 import trycb.model.IValue;
 import trycb.model.Result;
+import trycb.service.Airport;
+import trycb.service.AirportService;
 import trycb.service.TenantUser;
+import trycb.service.TenantUserService;
 import trycb.service.TokenService;
+import trycb.service.mongodb.MongoAirportService;
+import trycb.service.mongodb.MongoTenantUserService;
 
 @RestController
 @RequestMapping("/api/tenants")
 public class TenantUserController {
 
-  @Autowired private TenantUser tenantUserService;
-  @Autowired private final TokenService jwtService;
+  private final TokenService jwtService;
+
+  private final ApplicationProperties applicationProperties;
+
+  private final TenantUser tenantUser;
+
+  private final MongoTenantUserService mongoTenantUserService;
+
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TenantUserController.class);
 
   @Value("${storage.expiry:0}") private int expiry;
 
   @Autowired
-  public TenantUserController(TokenService jwtService, TenantUser tenantUserService) {
+  public TenantUserController(TokenService jwtService, ApplicationProperties applicationProperties,
+                              TenantUser tenantUser, MongoTenantUserService mongoTenantUserService) {
     this.jwtService = jwtService;
-    this.tenantUserService = tenantUserService;
+    this.applicationProperties = applicationProperties;
+    this.tenantUser = tenantUser;
+    this.mongoTenantUserService = mongoTenantUserService;
   }
 
-  @RequestMapping(value = "/{tenant}/user/login", method = RequestMethod.POST)
+  @PostMapping(value = "/{tenant}/user/login")
   public ResponseEntity<? extends IValue> login(@PathVariable("tenant") String tenant,
       @RequestBody Map<String, String> loginInfo) {
     String user = loginInfo.get("user");
@@ -53,7 +71,16 @@ public class TenantUserController {
     }
 
     try {
-      return ResponseEntity.ok(tenantUserService.login(tenant, user, password));
+      Result<Map<String, Object>> mapResult = null;
+      if (applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getCOUCHBASE()) ||
+              applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getBOTH())) {
+        mapResult = tenantUser.login(tenant, user, password);
+      }
+      if (applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getMONGODB()) ||
+              applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getBOTH())) {
+        mapResult = mongoTenantUserService.login(tenant, user, password);
+      }
+      return ResponseEntity.ok(mapResult);
     } catch (AuthenticationException e) {
       e.printStackTrace();
       LOGGER.error("Authentication failed with exception", e);
@@ -65,12 +92,22 @@ public class TenantUserController {
     }
   }
 
-  @RequestMapping(value = "/{tenant}/user/signup", method = RequestMethod.POST)
+  @PostMapping(value = "/{tenant}/user/signup")
   public ResponseEntity<? extends IValue> createLogin(@PathVariable("tenant") String tenant, @RequestBody String json) {
-    JsonObject jsonData = JsonObject.fromJson(json);
+    JsonObject jsonData = JsonParser.parseString(json).getAsJsonObject();
     try {
-      Result<Map<String, Object>> result = tenantUserService.createLogin(tenant, jsonData.getString("user"),
-          jsonData.getString("password"), DurabilityLevel.values()[expiry]);
+      Result<Map<String, Object>> result = null;
+      if (applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getCOUCHBASE()) ||
+              applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getBOTH())) {
+        result = tenantUser.createLogin(tenant, jsonData.get("user").getAsString(),
+                jsonData.get("password").getAsString(), DurabilityLevel.values()[expiry]);
+      }
+      if (applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getMONGODB()) ||
+              applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getBOTH())) {
+        result = mongoTenantUserService.createLogin(tenant, jsonData.get("user").getAsString(),
+                jsonData.get("password").getAsString(), DurabilityLevel.values()[expiry]);
+      }
+
       return ResponseEntity.status(HttpStatus.CREATED).body(result);
     } catch (AuthenticationServiceException e) {
       e.printStackTrace();
@@ -83,18 +120,25 @@ public class TenantUserController {
     }
   }
 
-  @RequestMapping(value = "/{tenant}/user/{username}/flights", method = RequestMethod.PUT)
+  @PutMapping(value = "/{tenant}/user/{username}/flights")
   public ResponseEntity<? extends IValue> book(@PathVariable("tenant") String tenant,
       @PathVariable("username") String username, @RequestBody String json,
       @RequestHeader("Authorization") String authentication) {
     if (authentication == null || !authentication.startsWith("Bearer ")) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Error("Bearer Authentication must be used"));
     }
-    JsonObject jsonData = JsonObject.fromJson(json);
     try {
+      JsonObject jsonData = JsonParser.parseString(json).getAsJsonObject();
       jwtService.verifyAuthenticationHeader(authentication, username);
-      Result<Map<String, Object>> result = tenantUserService.registerFlightForUser(tenant, username,
-          jsonData.getArray("flights"));
+      Result<Map<String, Object>> result = null;
+      if (applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getCOUCHBASE()) ||
+              applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getBOTH())) {
+        result = tenantUser.registerFlightForUser(tenant, username, jsonData.getAsJsonArray("flights"));
+      }
+      if (applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getMONGODB()) ||
+              applicationProperties.getWriteToDatabase().equalsIgnoreCase(applicationProperties.getBOTH())) {
+        result = mongoTenantUserService.registerFlightForUser(tenant, username, jsonData.getAsJsonArray("flights"));
+      }
       return ResponseEntity.ok().body(result);
     } catch (IllegalStateException e) {
       e.printStackTrace();
@@ -107,7 +151,7 @@ public class TenantUserController {
     }
   }
 
-  @RequestMapping(value = "/{tenant}/user/{username}/flights", method = RequestMethod.GET)
+  @GetMapping(value = "/{tenant}/user/{username}/flights")
   public Object booked(@PathVariable("tenant") String tenant, @PathVariable("username") String username,
       @RequestHeader("Authorization") String authentication) {
     if (authentication == null || !authentication.startsWith("Bearer ")) {
@@ -116,7 +160,7 @@ public class TenantUserController {
 
     try {
       jwtService.verifyAuthenticationHeader(authentication, username);
-      return ResponseEntity.ok(tenantUserService.getFlightsForUser(tenant, username));
+      return ResponseEntity.ok(getTenantUserService().getFlightsForUser(tenant, username));
     } catch (IllegalStateException e) {
       e.printStackTrace();
       LOGGER.error("Failed with invalid state exception", e);
@@ -128,6 +172,16 @@ public class TenantUserController {
       return ResponseEntity.status(HttpStatus.FORBIDDEN)
           .body(new Error("Forbidden, you don't have access to this cart"));
     }
+  }
+
+  private TenantUserService getTenantUserService() {
+    TenantUserService tenantUserService = null;
+    if (applicationProperties.getReadFromDatabase().equalsIgnoreCase(applicationProperties.getCOUCHBASE())) {
+      tenantUserService = tenantUser;
+    } else if (applicationProperties.getReadFromDatabase().equalsIgnoreCase(applicationProperties.getMONGODB())) {
+      tenantUserService = mongoTenantUserService;
+    }
+    return tenantUserService;
   }
 
 }

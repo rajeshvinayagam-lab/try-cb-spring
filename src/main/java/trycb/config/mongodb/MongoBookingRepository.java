@@ -23,6 +23,7 @@
 package trycb.config.mongodb;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -33,14 +34,14 @@ import org.springframework.stereotype.Repository;
  * MongoDB repository for Booking documents
  */
 @Repository("mongoBookingRepository")
-@Profile("mongodb")
 public interface MongoBookingRepository extends MongoRepository<MongoBooking, String> {
-    
-    /**
-     * Find bookings by username
-     */
-    List<MongoBooking> findByUsername(String username);
-    
+
+    @Query("{ 'bookingId': ?0 }")
+    Optional<MongoBooking> findByBookingId(String bookingId);
+
+    @Query("{ 'name': ?0 }")
+    List<MongoBooking> findByName(String name);
+
     /**
      * Find bookings by type
      */

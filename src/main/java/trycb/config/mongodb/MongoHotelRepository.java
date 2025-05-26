@@ -33,19 +33,18 @@ import org.springframework.stereotype.Repository;
  * MongoDB repository for Hotel documents
  */
 @Repository("mongoHotelRepository")
-@Profile("mongodb")
 public interface MongoHotelRepository extends MongoRepository<MongoHotel, String> {
-    
+
     /**
      * Find hotels by city name
      */
     List<MongoHotel> findByCity(String city);
-    
+
     /**
      * Find hotels by country
      */
     List<MongoHotel> findByCountry(String country);
-    
+
     /**
      * Find hotels by type
      */

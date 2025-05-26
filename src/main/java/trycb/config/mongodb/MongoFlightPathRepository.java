@@ -34,7 +34,6 @@ import org.springframework.stereotype.Repository;
  * MongoDB repository for FlightPath documents
  */
 @Repository("mongoFlightPathRepository")
-@Profile("mongodb")
 public interface MongoFlightPathRepository extends MongoRepository<MongoFlightPath, String> {
 
     /**

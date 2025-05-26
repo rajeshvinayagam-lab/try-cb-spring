@@ -45,7 +45,6 @@ import trycb.service.HotelService;
  * MongoDB implementation of the HotelService
  */
 @Service
-@Profile("mongodb")
 public class MongoHotelService implements HotelService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoHotelService.class);
@@ -58,54 +57,6 @@ public class MongoHotelService implements HotelService {
         this.hotelRepository = hotelRepository;
         this.mongoTemplate = mongoTemplate;
     }
-
-//    public Result<List<Map<String, Object>>> findHotels(String location, String description) {
-//        MongoCollection<Document> collection = mongoTemplate.getCollection("hotel");
-//
-//        List<Document> must = new ArrayList<>();
-//        must.add(new Document("text", new Document("query", "hotel")
-//                .append("path", "type")));
-//
-//        if (location != null && !location.isEmpty() && !"*".equals(location)) {
-//            List<String> locationFields = Arrays.asList("country", "city", "state", "address");
-//            List<Document> should = new ArrayList<>();
-//            for (String field : locationFields) {
-//                should.add(new Document("phrase", new Document("query", location).append("path", field)));
-//            }
-//            must.add(new Document("compound", new Document("should", should)));
-//        }
-//
-//        if (description != null && !description.isEmpty() && !"*".equals(description)) {
-//            List<String> descFields = Arrays.asList("description", "name");
-//            List<Document> should = new ArrayList<>();
-//            for (String field : descFields) {
-//                should.add(new Document("phrase", new Document("query", description).append("path", field)));
-//            }
-//            must.add(new Document("compound", new Document("should", should)));
-//        }
-//
-//        Document searchStage = new Document("$search", new Document("index", "hotels-index")
-//                .append("compound", new Document("must", must)));
-//
-//        List<Document> pipeline = Arrays.asList(
-//                searchStage,
-//                new Document("$limit", 100),
-//                new Document("$project", new Document("name", 1)
-//                        .append("description", 1)
-//                        .append("address", 1)
-//                        .append("score", new Document("$meta", "searchScore")))
-//        );
-//
-//        List<Document> results = collection.aggregate(pipeline).into(new ArrayList<>());
-//
-//        List<Map<String, Object>> resultList = new ArrayList<>();
-//        for (Document doc : results) {
-//            resultList.add(doc);
-//        }
-//
-//        String queryType = "MongoDB Atlas FTS search - scoped to: hotel within fields country, city, state, address, name, description";
-//        return Result.of(resultList, queryType);
-//    }
 
     public Result<List<Map<String, Object>>> findHotels(String location, String description) {
         MongoCollection<Document> collection = mongoTemplate.getCollection("hotel");

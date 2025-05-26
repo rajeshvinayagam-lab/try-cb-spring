@@ -22,14 +22,20 @@
 
 package trycb.service;
 
-import com.couchbase.client.core.deps.io.netty.util.CharsetUtil;
-import com.couchbase.client.java.json.JsonObject;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Base64Utils;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class TokenService {
@@ -79,7 +85,7 @@ public class TokenService {
         }
     }
 
-    public String buildToken(String username) {
+    public String buildToken(String username) throws JsonProcessingException {
         if (useJwt) {
             return buildJwtToken(username);
         } else {
@@ -87,16 +93,23 @@ public class TokenService {
         }
     }
 
-    private String buildJwtToken(String username) {
+    private String buildJwtToken(String username) throws JsonProcessingException {
+//        String token = Jwts.builder().signWith(SignatureAlgorithm.HS512, secret)
+//                .setPayload(JsonObject.create()
+//                    .put("user", username)
+//                    .toString())
+//                .compact();
+
+        Map<String, String> map = new HashMap<>();
+        map.put("user", username);
+        String jsonString = new ObjectMapper().writeValueAsString(map);
         String token = Jwts.builder().signWith(SignatureAlgorithm.HS512, secret)
-                .setPayload(JsonObject.create()
-                    .put("user", username)
-                    .toString())
-                .compact();
+                .setPayload(jsonString).compact();
         return token;
     }
 
     private String buildSimpleToken(String username) {
-        return Base64Utils.encodeToString(username.getBytes(CharsetUtil.UTF_8));
+//        return Base64Utils.encodeToString(username.getBytes(CharsetUtil.UTF_8));
+        return Base64.getEncoder().encodeToString(username.getBytes(StandardCharsets.UTF_8));
     }
 }

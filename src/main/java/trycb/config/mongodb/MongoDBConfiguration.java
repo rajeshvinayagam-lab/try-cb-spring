@@ -36,7 +36,6 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 
 @Configuration
-@Profile("mongodb")
 @EnableMongoRepositories(basePackages = "trycb.config.mongodb")
 public class MongoDBConfiguration {
 

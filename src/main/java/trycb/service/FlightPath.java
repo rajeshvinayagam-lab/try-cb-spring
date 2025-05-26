@@ -40,7 +40,6 @@ import trycb.config.FlightPathRepository;
 import trycb.model.Result;
 
 @Service
-@Profile("couchbase")
 public class FlightPath implements FlightPathService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlightPath.class);

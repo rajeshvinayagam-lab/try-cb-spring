@@ -42,7 +42,6 @@ import trycb.service.AirportService;
  * MongoDB implementation of the AirportService
  */
 @Service
-@Profile("mongodb")
 public class MongoAirportService implements AirportService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoAirportService.class);

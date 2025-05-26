@@ -45,7 +45,6 @@ import trycb.service.FlightPathService;
  * MongoDB implementation of the FlightPathService
  */
 @Service
-@Profile("mongodb")
 public class MongoFlightPathService implements FlightPathService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoFlightPathService.class);

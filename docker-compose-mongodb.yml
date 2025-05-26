@@ -44,7 +44,7 @@ services:
       - MONGO_INITDB_DATABASE=travel-sample
     ports:
       - 27017:27017
-    mem_limit: 4g  # allocate 4GB
+    mem_limit: 3g  # allocate 3GB
     volumes:
       - mongodb-data:/data/db
       - ./mongodb-init:/docker-entrypoint-initdb.d

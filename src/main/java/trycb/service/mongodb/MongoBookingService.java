@@ -44,7 +44,6 @@ import trycb.service.BookingService;
  * MongoDB implementation of the BookingService
  */
 @Service
-@Profile("mongodb")
 public class MongoBookingService implements BookingService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoBookingService.class);
@@ -63,7 +62,7 @@ public class MongoBookingService implements BookingService {
         String queryType = null;
         try {
             // Find bookings for the user
-            List<MongoBooking> mongoBookings = bookingRepository.findByUsername(username);
+            List<MongoBooking> mongoBookings = bookingRepository.findByName(username);
             bookings = convertToBookings(mongoBookings);
 
             queryType = "MongoDB query for bookings by username: " + username;
@@ -112,8 +111,8 @@ public class MongoBookingService implements BookingService {
      */
     private Booking convertToBooking(MongoBooking mongoBooking) {
         Booking booking = new Booking();
-        booking.bookingId = mongoBooking.getId();
-        booking.name = mongoBooking.getUsername();
+        booking.bookingId = mongoBooking.getBookingId();
+        booking.name = mongoBooking.getName();
         booking.flight = mongoBooking.getFlight();
         booking.price = Integer.valueOf(mongoBooking.getPrice());
 //        booking.setDate(mongoBooking.getDate());
@@ -142,7 +141,7 @@ public class MongoBookingService implements BookingService {
      */
     private MongoBooking convertToMongoBooking(Booking booking) {
         MongoBooking mongoBooking = new MongoBooking();
-        mongoBooking.setId(booking.bookingId);
+        mongoBooking.setBookingId(booking.bookingId);
 //        mongoBooking.setUsername(booking.getUsername());
 //        mongoBooking.setFlight(booking.getFlight());
 //        mongoBooking.setPrice(booking.getPrice());

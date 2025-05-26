@@ -37,7 +37,6 @@ import trycb.config.AirportRepository;
 import trycb.model.Result;
 
 @Service
-@Profile("couchbase")
 public class Airport implements AirportService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Airport.class);
